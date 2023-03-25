@@ -1,0 +1,9 @@
+    Finished dev [unoptimized + debuginfo] target(s) in 0.02s
+     Running `target\debug\echors.exe -x`
+error: Found argument '-x' which wasn't expected, or isn't valid in this context
+
+USAGE:
+    echors.exe [FLAGS] <TEXT>...
+
+For more information try --help
+error: process didn't exit successfully: `target\debug\echors.exe -x` (exit code: 1)

@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use std::{fs, error::Error};
+use std::error::Error;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 
@@ -21,17 +21,16 @@ pub fn run(arg_data: Config) -> CatResult<()> {
             _ => {
                 let n = arg_data.number_lines;
                 let b = arg_data.number_nonblank_lines;
-                let mut cnt = 0;
+                let mut ln_num = 0;
                 for line in reader?.lines() {
                     let text = line?;
-                    let is_blank = text.len() == 0;
-                    let line_num = if n || (b && !is_blank) {
-                        cnt+=1;
-                        format!("{:6}     ", cnt)
+                    let ln_txt = if n || (b && text.trim().is_empty()) {
+                        ln_num+=1;
+                        format!("{:>6}     ", ln_num)
                     } else {
                         "".to_string()
                     };
-                    println!("{}{}", line_num, text);
+                    println!("{}{}", ln_txt, text);
                 }
             },
         }

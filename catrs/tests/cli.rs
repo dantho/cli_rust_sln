@@ -3,7 +3,8 @@ use predicates::prelude::*;
 use rand::{distributions::Alphanumeric, Rng};
 use std::error::Error;
 use std::fs;
-use std::io::{BufRead};
+use std::io::BufRead;
+use newline_converter::AsRefStrExt;
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -14,14 +15,30 @@ const SPIDERS: &str = "tests/inputs/spiders.txt";
 const BUSTLE: &str = "tests/inputs/the-bustle.txt";
 
 // --------------------------------------------------
-#[test]
-fn usage() -> TestResult {
-    for flag in &["-h", "--help"] {
-        Command::cargo_bin(PRG)?
-            .arg(flag)
-            .assert()
-            .stdout(predicate::str::contains("USAGE"));
-    }
+fn run(args: &[&str], expected_file: &str) -> TestResult {
+    let expected = fs::read_to_string(expected_file)?.to_dos().to_string();
+    Command::cargo_bin(PRG)?
+        .args(args)
+        .assert()
+        .success()
+        .stdout(expected);
+    Ok(())
+}
+
+// --------------------------------------------------
+fn run_stdin(
+    input_file: &str,
+    args: &[&str],
+    expected_file: &str,
+) -> TestResult {
+    let expected = fs::read_to_string(expected_file)?.to_dos().to_string();
+    let input = fs::read_to_string(input_file)?.to_dos().to_string();
+    Command::cargo_bin(PRG)?
+        .args(args)
+        .write_stdin(input)
+        .assert()
+        .success()
+        .stdout(expected);
     Ok(())
 }
 
@@ -42,6 +59,18 @@ fn gen_bad_file() -> String {
 
 // --------------------------------------------------
 #[test]
+fn usage() -> TestResult {
+    for flag in &["-h", "--help"] {
+        Command::cargo_bin(PRG)?
+            .arg(flag)
+            .assert()
+            .stdout(predicate::str::contains("USAGE"));
+    }
+    Ok(())
+}
+
+// --------------------------------------------------
+#[test]
 fn skips_bad_file() -> TestResult {
     let bad = gen_bad_file();
     let expected = format!("Failed to open {}: The system cannot find the file specified. (os error 2)\n", bad);
@@ -50,34 +79,6 @@ fn skips_bad_file() -> TestResult {
         .assert()
             .success()
             .stderr(predicate::str::contains(expected));
-    Ok(())
-}
-
-// --------------------------------------------------
-fn run(args: &[&str], expected_file: &str) -> TestResult {
-    let expected = fs::read_to_string(expected_file)?;
-    Command::cargo_bin(PRG)?
-        .args(args)
-        .assert()
-        .success()
-        .stdout(expected);
-    Ok(())
-}
-
-// --------------------------------------------------
-fn run_stdin(
-    input_file: &str,
-    args: &[&str],
-    expected_file: &str,
-) -> TestResult {
-    let input: String = catrs::open(input_file)?.lines().flatten().map(|l|l+&"\n").collect();
-    let expected: String = catrs::open(expected_file)?.lines().flatten().map(|l|l+&"\n").collect();
-    Command::cargo_bin(PRG)?
-        .args(args)
-        .write_stdin(input)
-        .assert()
-        .success()
-        .stdout(expected);
     Ok(())
 }
 

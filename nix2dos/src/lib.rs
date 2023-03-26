@@ -1,7 +1,7 @@
 use clap::{App, Arg};
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Write};
 
 #[derive(Debug)]
 pub struct Config {
@@ -11,18 +11,35 @@ pub struct Config {
 type CrateResult<T> = Result<T, Box<dyn Error>>;
 
 pub fn run(arg_data: Config) -> CrateResult<()> {
-    for file in &arg_data.files {
-        let reader = open(file);
-        match reader {
-            Err(e) => {
-                eprintln!("Failed to open {}: {}", file, e);
-            },
-            _ => {
-                for line in reader?.lines() {
-                    println!("{}", line?);
-                }
-            },
-        }
+    for filepath in &arg_data.files {
+        // Create a file inside of `std::env::temp_dir()`.
+        let mut tmpfile = tempfile::NamedTempFile::new()?;
+        {
+            let reader = open(filepath);
+            match reader {
+                Err(e) => {
+                    eprintln!("Failed to open {}: {}", filepath, e);
+                },
+                _ => {
+                    // This is a no-brainer for all but the LAST line
+                    // If the last line is unterminated, we shouldn't terminate it
+                    let ends_in_linefeed = true;
+                    let mut lines = reader?.lines();
+                    let mut last_line = lines.next().unwrap();
+                    for line in lines {
+                        writeln!(tmpfile,"{}", last_line?)?;
+                        last_line = line;
+                    }
+                    if ends_in_linefeed {
+                        writeln!(tmpfile,"{}", last_line?)?;
+                    } else {
+                        write!(tmpfile,"{}", last_line?)?;
+                    }
+                },
+            }
+        } // drop reader
+        // Now replace original file with tmpfile
+        tmpfile.persist(filepath)?;
     }
 
     Ok(())

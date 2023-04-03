@@ -57,18 +57,18 @@ pub fn get_args() -> HeadResult<Config> {
         .get_matches();
 
         let files = matches.values_of_lossy("file_or_stdin").unwrap(); // Has a default
-        let lines = match parse_positive_int(matches.value_of("lines").unwrap()) {
-            Ok(num) => num,
-            Err(e) => return Err(format!("illegal line count -- {}" , e.to_string()).into()),
-        };
-        let bytes = if matches.is_present("bytes") {
-            match parse_positive_int(matches.value_of("bytes").unwrap()) {
-                Ok(num) => Some(num),
-                Err(e) => return Err(format!("illegal byte count -- {}" , e.to_string()).into()),
-            }
-        } else {
-            None
-        };
+
+        let lines = matches
+            .value_of("lines")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal line count -- {}" , e))?.unwrap();
+        let bytes = matches
+            .value_of("bytes")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal byte count -- {}" , e))?;
+
         Ok(Config {
             files,
             lines,

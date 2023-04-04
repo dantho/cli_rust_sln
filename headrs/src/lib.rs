@@ -1,7 +1,7 @@
 use clap::{App, Arg};
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read};
 
 #[derive(Debug)]
 pub struct Config {
@@ -16,8 +16,25 @@ pub fn run(config: Config) -> HeadResult<()> {
     // println!("{:#?}", config);
     for filename in config.files {
         match open(&filename) {
-            Err(err) => eprintln!("{}: {}", filename, err),
-            Ok(_) => println!("Successfully opened {}", filename),
+            Err(err) => eprintln!("headrs: {}: {}", filename, err),
+            Ok(mut reader) => {
+                println!("==> {} <==", filename);
+                if let Some(b) = config.bytes {
+                    let mut handle = reader.take(b.try_into().unwrap());
+                    let mut buf = vec![0; b];
+                    let bytes_read = handle.read(&mut buf)?;
+                    print!("{}", String::from_utf8_lossy(&buf[..bytes_read]));                    
+                } else {
+                    let mut buf: String = Default::default();
+                    for _n in 0..config.lines {
+                        reader.read_line(&mut buf)?;
+                        if !buf.is_empty() {
+                            print!("{}\n",buf);
+                            buf.clear();
+                        }
+                    }
+                }
+            },
         }
     }
     Ok(())

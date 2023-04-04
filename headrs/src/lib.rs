@@ -13,7 +13,13 @@ pub struct Config {
 type HeadResult<T> = Result<T, Box<dyn Error>>;
 
 pub fn run(config: Config) -> HeadResult<()> {
-    println!("{:#?}", config);
+    // println!("{:#?}", config);
+    for filename in config.files {
+        match open(&filename) {
+            Err(err) => eprintln!("{}: {}", filename, err),
+            Ok(_) => println!("Successfully opened {}", filename),
+        }
+    }
     Ok(())
 }
 

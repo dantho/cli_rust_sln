@@ -13,23 +13,34 @@ pub struct Config {
 type HeadResult<T> = Result<T, Box<dyn Error>>;
 
 pub fn run(config: Config) -> HeadResult<()> {
-    // println!("{:#?}", config);
-    for filename in config.files {
+    let num_files = config.files.len();
+    for (file_num, filename) in config.files.iter().enumerate() {
         match open(&filename) {
             Err(err) => eprintln!("headrs: {}: {}", filename, err),
             Ok(mut reader) => {
-                println!("==> {} <==", filename);
+                if num_files > 1 {
+                    println!(
+                        "{}==> {} <==",
+                        if file_num > 0 {""} else {"\r\n"},
+                        filename
+                    );
+                }
                 if let Some(b) = config.bytes {
-                    let mut handle = reader.take(b.try_into().unwrap());
+                    let mut handle = reader.take(b as u64);
                     let mut buf = vec![0; b];
                     let bytes_read = handle.read(&mut buf)?;
-                    print!("{}", String::from_utf8_lossy(&buf[..bytes_read]));                    
+                    print!(
+                        "{}",
+                        String::from_utf8_lossy(&buf[..bytes_read])
+                    );
                 } else {
                     let mut buf: String = Default::default();
                     for _n in 0..config.lines {
                         reader.read_line(&mut buf)?;
-                        if !buf.is_empty() {
-                            print!("{}\n",buf);
+                        if buf.is_empty() {
+                            break;
+                        } else {
+                            print!("{}",buf);
                             buf.clear();
                         }
                     }

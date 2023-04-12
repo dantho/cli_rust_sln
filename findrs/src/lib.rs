@@ -1,7 +1,7 @@
 use crate::EntryType::*;
 use clap::{App, Arg};
 use regex::Regex;
-use std::error::Error;
+use std::{error::Error, borrow::Cow};
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
 
@@ -34,16 +34,18 @@ pub fn get_args() -> MyResult<Config> {
             Arg::with_name("names")
                 .short("n")
                 .long("names")
-                .help("One or more patterns to find (separated by -o, for 'OR'")
+                .help("One or more patterns to find (separated by -o, for 'OR')")
+                .takes_value(true)
                 .multiple(true)
                 .required(false)
                 .case_insensitive(true)
         )
         .arg(
-            Arg::with_name("entry_type")
+            Arg::with_name("entry_types")
                 .short("t")
                 .long("type")
-                .help("Type to search for (default is both)")
+                .help("Type(s) to search for (default is both, 'File' and 'Dir')")
+                .possible_values(&["f", "file", "d", "dir"])
                 .takes_value(true)
                 .multiple(true)
                 .required(false)
@@ -54,18 +56,19 @@ pub fn get_args() -> MyResult<Config> {
         let paths = matches.values_of_lossy("files").unwrap(); // Has a default
 
         let names = matches
-            .value_of("names")
-            .map(parse_regex)
+            .values_of_lossy("names")
+            .map(parse_regexes)
             .transpose()
             .map_err(|e| format!("illegal pattern -- {}" , e))?;
-        let names = names.into_iter().collect();
+        let names = names.unwrap_or_default();
         
         let entry_types = matches
-            .value_of("entry_type")
-            .map(parse_entry_type)
+            .values_of_lossy("entry_types")
+            .map(parse_entry_types)
             .transpose()
             .map_err(|e| format!("illegal entry_type -- {}" , e))?;
-        let entry_types = entry_types.into_iter().collect();
+
+        let entry_types = entry_types.unwrap_or_default();
 
     Ok(Config {
         paths,
@@ -79,21 +82,21 @@ pub fn run(config: Config) -> MyResult<()> {
     Ok(())
 }
 
-fn parse_regex(s: &str) -> MyResult<Regex> {
-    Ok(Regex::new("")?)
+fn parse_regexes(rs: Vec<String>) -> MyResult<Vec<Regex>> {
+    Ok(vec![Regex::new("")?])
 }
 
-fn parse_entry_type(s: &str) -> MyResult<EntryType> {
-    s.try_into()
+fn parse_entry_types(vs: Vec<String>) -> MyResult<Vec<EntryType>> {
+    Ok(vs.iter().map(|s|s[..].try_into()).flatten().collect())
 }
 
 impl TryInto<EntryType> for &str {
     type Error = Box<dyn Error>;
     fn try_into(self) -> MyResult<EntryType> {
-    match &self.to_lowercase()[..] {
-        "file" => Ok(File),
-        "dir" => Ok(Dir),
-        _ => Err(self.into())
-    }
+        match &self.to_lowercase()[..] {
+            "file" | "f" => Ok(File),
+            "dir" | "d" => Ok(Dir),
+            _ => Err(self.into())
+        }
     }
 }
